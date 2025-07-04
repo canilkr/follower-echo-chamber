@@ -1,12 +1,12 @@
 
 export interface ActivityUpdate {
-  id: number;
+  id: string; // Changed from number to string to match Twitter data
   username: string;
   displayName: string;
   action: string;
   content: string;
   timestamp: string;
-  type: 'comment' | 'like' | 'retweet';
+  type: 'comment' | 'like' | 'retweet' | 'tweet'; // Added 'tweet' type
   avatar: string;
 }
 

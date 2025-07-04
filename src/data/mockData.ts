@@ -10,7 +10,7 @@ export const stats: Stats = {
 
 export const recentUpdates: ActivityUpdate[] = [
   {
-    id: 1,
+    id: '1', // Changed from number to string
     username: '@yashchitneni',
     displayName: 'Yash Chitneni',
     action: 'commented',
@@ -20,7 +20,7 @@ export const recentUpdates: ActivityUpdate[] = [
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face'
   },
   {
-    id: 2,
+    id: '2', // Changed from number to string
     username: '@markminervini',
     displayName: 'Mark Minervini',
     action: 'retweeted',
@@ -30,7 +30,7 @@ export const recentUpdates: ActivityUpdate[] = [
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face'
   },
   {
-    id: 3,
+    id: '3', // Changed from number to string
     username: '@yashchitneni',
     displayName: 'Yash Chitneni',
     action: 'liked',
@@ -40,7 +40,7 @@ export const recentUpdates: ActivityUpdate[] = [
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face'
   },
   {
-    id: 4,
+    id: '4', // Changed from number to string
     username: '@markminervini',
     displayName: 'Mark Minervini',
     action: 'commented',
@@ -50,7 +50,7 @@ export const recentUpdates: ActivityUpdate[] = [
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face'
   },
   {
-    id: 5,
+    id: '5', // Changed from number to string
     username: '@yashchitneni',
     displayName: 'Yash Chitneni',
     action: 'retweeted',
