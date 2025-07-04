@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { Search, Users, MessageCircle, Heart, Retweet, TrendingUp } from 'lucide-react';
+import { Search, Users, MessageCircle, Heart, Repeat2, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -67,7 +66,7 @@ const Index = () => {
       case 'like':
         return <Heart className="w-4 h-4 text-red-400" />;
       case 'retweet':
-        return <Retweet className="w-4 h-4 text-green-400" />;
+        return <Repeat2 className="w-4 h-4 text-green-400" />;
       default:
         return <MessageCircle className="w-4 h-4 text-blue-400" />;
     }
