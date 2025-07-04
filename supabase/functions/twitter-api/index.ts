@@ -16,15 +16,26 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Twitter API function called');
+    
     const { username, type } = await req.json();
+    console.log(`Request: username=${username}, type=${type}`);
     
     if (!TWITTER_BEARER_TOKEN) {
+      console.error('Twitter Bearer Token not configured');
       throw new Error('Twitter Bearer Token not configured');
+    }
+
+    if (!username || !type) {
+      console.error('Missing username or type parameter');
+      throw new Error('Missing username or type parameter');
     }
 
     let tweets;
     
     if (type === 'user-tweets') {
+      console.log(`Fetching user ID for ${username}`);
+      
       // Get user ID first
       const userResponse = await fetch(`https://api.twitter.com/2/users/by/username/${username}`, {
         headers: {
@@ -34,11 +45,20 @@ serve(async (req) => {
       });
 
       if (!userResponse.ok) {
+        const errorText = await userResponse.text();
+        console.error(`Failed to fetch user: ${userResponse.status} - ${errorText}`);
         throw new Error(`Failed to fetch user: ${userResponse.statusText}`);
       }
 
       const userData = await userResponse.json();
+      console.log('User data:', userData);
+      
+      if (!userData.data) {
+        throw new Error(`User ${username} not found`);
+      }
+      
       const userId = userData.data.id;
+      console.log(`User ID for ${username}: ${userId}`);
 
       // Get user tweets
       const tweetsResponse = await fetch(
@@ -52,11 +72,17 @@ serve(async (req) => {
       );
 
       if (!tweetsResponse.ok) {
+        const errorText = await tweetsResponse.text();
+        console.error(`Failed to fetch tweets: ${tweetsResponse.status} - ${errorText}`);
         throw new Error(`Failed to fetch tweets: ${tweetsResponse.statusText}`);
       }
 
       tweets = await tweetsResponse.json();
+      console.log('Tweets response:', tweets);
+      
     } else if (type === 'user-mentions') {
+      console.log(`Fetching mentions for ${username}`);
+      
       // Search for mentions of the user
       const mentionsResponse = await fetch(
         `https://api.twitter.com/2/tweets/search/recent?query=@${username}&max_results=10&tweet.fields=created_at,public_metrics,author_id&user.fields=profile_image_url,verified&expansions=author_id`,
@@ -69,10 +95,15 @@ serve(async (req) => {
       );
 
       if (!mentionsResponse.ok) {
+        const errorText = await mentionsResponse.text();
+        console.error(`Failed to fetch mentions: ${mentionsResponse.status} - ${errorText}`);
         throw new Error(`Failed to fetch mentions: ${mentionsResponse.statusText}`);
       }
 
       tweets = await mentionsResponse.json();
+      console.log('Mentions response:', tweets);
+    } else {
+      throw new Error(`Invalid type parameter: ${type}`);
     }
 
     console.log('Twitter API Response:', JSON.stringify(tweets, null, 2));
