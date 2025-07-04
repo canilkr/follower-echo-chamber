@@ -21,8 +21,8 @@ export const recentUpdates: ActivityUpdate[] = [
   },
   {
     id: 2,
-    username: '@markmiervini',
-    displayName: 'Mark Miervini',
+    username: '@markminervini',
+    displayName: 'Mark Minervini',
     action: 'retweeted',
     content: 'Your latest post about product strategy',
     timestamp: '12 minutes ago',
@@ -41,8 +41,8 @@ export const recentUpdates: ActivityUpdate[] = [
   },
   {
     id: 4,
-    username: '@markmiervini',
-    displayName: 'Mark Miervini',
+    username: '@markminervini',
+    displayName: 'Mark Minervini',
     action: 'commented',
     content: 'Love this approach! Would be great to connect and discuss this further.',
     timestamp: '1 hour ago',
