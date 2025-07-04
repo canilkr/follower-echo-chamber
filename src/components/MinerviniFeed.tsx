@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,7 @@ import { ExternalLink, RefreshCw, Twitter, Clock, TrendingUp } from 'lucide-reac
 import { fetchMinerviniTweets, MinerviniTweet } from '@/services/minerviniService';
 import { useToast } from '@/hooks/use-toast';
 
-const Minervinifeed = () => {
+const MinerviniFeed = () => {
   const [tweets, setTweets] = useState<MinerviniTweet[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
