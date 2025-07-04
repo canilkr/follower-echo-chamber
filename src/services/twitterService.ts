@@ -1,19 +1,23 @@
 
+import { supabase } from '@/integrations/supabase/client';
 import { TwitterApiResponse, ProcessedTwitterActivity } from '@/types/twitter';
 
-// This service will interact with your Supabase Edge Functions
 export class TwitterService {
-  private baseUrl = '/api/twitter'; // This will be your Supabase Edge Function URL
-
   async fetchUserTweets(username: string): Promise<ProcessedTwitterActivity[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/user-tweets/${username}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch tweets: ${response.statusText}`);
-      }
+      console.log(`Fetching tweets for ${username}`);
       
-      const data: TwitterApiResponse = await response.json();
-      return this.processTwitterData(data);
+      const { data, error } = await supabase.functions.invoke('twitter-api', {
+        body: { username, type: 'user-tweets' }
+      });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(`Failed to fetch tweets: ${error.message}`);
+      }
+
+      console.log('Raw Twitter API response:', data);
+      return this.processTwitterData(data, username);
     } catch (error) {
       console.error('Error fetching user tweets:', error);
       throw error;
@@ -22,42 +26,64 @@ export class TwitterService {
 
   async fetchUserMentions(username: string): Promise<ProcessedTwitterActivity[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/user-mentions/${username}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch mentions: ${response.statusText}`);
-      }
+      console.log(`Fetching mentions for ${username}`);
       
-      const data: TwitterApiResponse = await response.json();
-      return this.processTwitterData(data);
+      const { data, error } = await supabase.functions.invoke('twitter-api', {
+        body: { username, type: 'user-mentions' }
+      });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(`Failed to fetch mentions: ${error.message}`);
+      }
+
+      console.log('Raw Twitter mentions response:', data);
+      return this.processTwitterData(data, username);
     } catch (error) {
       console.error('Error fetching user mentions:', error);
       throw error;
     }
   }
 
-  private processTwitterData(apiResponse: TwitterApiResponse): ProcessedTwitterActivity[] {
-    if (!apiResponse.data) return [];
+  private processTwitterData(apiResponse: any, targetUsername: string): ProcessedTwitterActivity[] {
+    if (!apiResponse || !apiResponse.data) {
+      console.log('No data in API response');
+      return [];
+    }
 
+    const tweets = apiResponse.data;
     const users = apiResponse.includes?.users || [];
-    const userMap = new Map(users.map(user => [user.id, user]));
+    const userMap = new Map(users.map((user: any) => [user.id, user]));
 
-    return apiResponse.data.map(tweet => {
+    return tweets.map((tweet: any) => {
       const author = userMap.get(tweet.author_id);
-      const isRetweet = tweet.referenced_tweets?.some(ref => ref.type === 'retweeted');
+      const isRetweet = tweet.referenced_tweets?.some((ref: any) => ref.type === 'retweeted');
+      const isMention = tweet.text.includes(`@${targetUsername}`);
       
+      let action: 'tweeted' | 'retweeted' | 'liked' | 'replied' = 'tweeted';
+      let type: 'tweet' | 'retweet' | 'like' | 'reply' = 'tweet';
+      
+      if (isRetweet) {
+        action = 'retweeted';
+        type = 'retweet';
+      } else if (isMention) {
+        action = 'replied';
+        type = 'reply';
+      }
+
       return {
         id: tweet.id,
         username: `@${author?.username || 'unknown'}`,
         displayName: author?.name || 'Unknown User',
-        action: isRetweet ? 'retweeted' : 'tweeted',
+        action,
         content: tweet.text,
         timestamp: this.formatTimestamp(tweet.created_at),
-        type: isRetweet ? 'retweet' : 'tweet',
+        type,
         avatar: author?.profile_image_url || '/placeholder.svg',
         engagement: {
-          likes: tweet.public_metrics.like_count,
-          retweets: tweet.public_metrics.retweet_count,
-          replies: tweet.public_metrics.reply_count,
+          likes: tweet.public_metrics?.like_count || 0,
+          retweets: tweet.public_metrics?.retweet_count || 0,
+          replies: tweet.public_metrics?.reply_count || 0,
         }
       };
     });
