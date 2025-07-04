@@ -19,43 +19,53 @@ const Index = () => {
   const recentUpdates = [
     {
       id: 1,
-      username: '@johndoe',
-      displayName: 'John Doe',
+      username: '@yashchitneni',
+      displayName: 'Yash Chitneni',
       action: 'commented',
-      content: 'Great insights on the latest tech trends! Really appreciate your perspective.',
-      timestamp: '2 minutes ago',
+      content: 'Really insightful thread about building in public! Your transparency is inspiring.',
+      timestamp: '5 minutes ago',
       type: 'comment',
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face'
     },
     {
       id: 2,
-      username: '@sarahsmith',
-      displayName: 'Sarah Smith',
+      username: '@markmiervini',
+      displayName: 'Mark Miervini',
       action: 'retweeted',
-      content: 'Your post about productivity hacks',
-      timestamp: '15 minutes ago',
+      content: 'Your latest post about product strategy',
+      timestamp: '12 minutes ago',
       type: 'retweet',
-      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b667b3c4?w=40&h=40&fit=crop&crop=face'
-    },
-    {
-      id: 3,
-      username: '@mikejohnson',
-      displayName: 'Mike Johnson',
-      action: 'liked',
-      content: 'Your recent thread about AI developments',
-      timestamp: '1 hour ago',
-      type: 'like',
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face'
     },
     {
+      id: 3,
+      username: '@yashchitneni',
+      displayName: 'Yash Chitneni',
+      action: 'liked',
+      content: 'Your recent insights on startup growth',
+      timestamp: '45 minutes ago',
+      type: 'like',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face'
+    },
+    {
       id: 4,
-      username: '@emilychen',
-      displayName: 'Emily Chen',
+      username: '@markmiervini',
+      displayName: 'Mark Miervini',
       action: 'commented',
-      content: 'Would love to collaborate on this project! DMing you now.',
-      timestamp: '2 hours ago',
+      content: 'Love this approach! Would be great to connect and discuss this further.',
+      timestamp: '1 hour ago',
       type: 'comment',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face'
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face'
+    },
+    {
+      id: 5,
+      username: '@yashchitneni',
+      displayName: 'Yash Chitneni',
+      action: 'retweeted',
+      content: 'Your post about the future of AI in product development',
+      timestamp: '2 hours ago',
+      type: 'retweet',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face'
     }
   ];
 
