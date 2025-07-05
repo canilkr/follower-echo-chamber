@@ -28,16 +28,16 @@ const CombinedFeed = () => {
         });
       } else {
         toast({
-          title: "No Tweets Found",
-          description: "No recent posts available from configured users",
-          variant: "destructive"
+          title: "No New Tweets",
+          description: "No recent posts available or rate limits active",
+          variant: "default"
         });
       }
     } catch (error) {
       console.error('Error loading combined tweets:', error);
       toast({
         title: "Connection Error",
-        description: "Unable to fetch live data. Please check your Twitter API configuration.",
+        description: "Unable to fetch live data. Rate limits may be active.",
         variant: "destructive"
       });
     } finally {
@@ -50,7 +50,7 @@ const CombinedFeed = () => {
     loadTweets();
   }, []);
 
-  // Auto-refresh every 2 minutes
+  // Auto-refresh every 15 minutes (respecting rate limits)
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
@@ -58,7 +58,7 @@ const CombinedFeed = () => {
       interval = setInterval(() => {
         console.log('Auto-refreshing combined feed...');
         loadTweets();
-      }, 2 * 60 * 1000); // 2 minutes
+      }, 15 * 60 * 1000); // 15 minutes - more reasonable for rate limits
     }
     
     return () => {
@@ -124,7 +124,7 @@ const CombinedFeed = () => {
               ))}
             </div>
             <Badge className={`${autoRefresh ? 'bg-green-500/10 text-green-400' : 'bg-slate-500/10 text-slate-400'} border-slate-700`}>
-              {autoRefresh ? 'Auto-refresh ON (2min)' : 'Auto-refresh OFF'}
+              {autoRefresh ? 'Auto-refresh ON (15min)' : 'Auto-refresh OFF'}
             </Badge>
           </div>
         </CardHeader>
@@ -136,6 +136,7 @@ const CombinedFeed = () => {
           <CardContent className="p-8 text-center">
             <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-400" />
             <p className="text-slate-400">Loading latest tweets from all users...</p>
+            <p className="text-sm text-slate-500 mt-2">This respects Twitter API rate limits</p>
           </CardContent>
         </Card>
       )}
@@ -147,7 +148,7 @@ const CombinedFeed = () => {
             <Twitter className="w-12 h-12 mx-auto mb-4 text-slate-600" />
             <p className="text-slate-400 mb-4">No recent posts available</p>
             <p className="text-sm text-slate-500">
-              Configure your Twitter API credentials to see live data from {TWITTER_USERS.length} users
+              This might be due to Twitter API rate limits or no new tweets. Try refreshing in a few minutes.
             </p>
             <div className="mt-4 text-xs text-slate-600">
               {/* Instructions for adding new users:
@@ -220,7 +221,7 @@ const CombinedFeed = () => {
         <div className="text-center text-slate-500 text-sm mt-8">
           <p>Combined feed from {TWITTER_USERS.length} Twitter accounts</p>
           <p className="text-xs mt-2">
-            To add more users, edit the TWITTER_USERS array in src/services/combinedFeedService.ts
+            Updates every 15 minutes to respect API rate limits. To add more users, edit the TWITTER_USERS array in src/services/combinedFeedService.ts
           </p>
         </div>
       )}
