@@ -1,10 +1,10 @@
 
 import React from 'react';
-import { Users, TrendingUp } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import MinerviniProfile from '@/components/MinerviniProfile';
 import MinerviniStats from '@/components/MinerviniStats';
-import MinerviniFeed from '@/components/MinerviniFeed';
+import TwitterFeed from '@/components/TwitterFeed';
 
 const Index = () => {
   return (
@@ -19,7 +19,7 @@ const Index = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  Mark Minervini Live Feed
+                  Trading Insights Dashboard
                 </h1>
                 <p className="text-sm text-slate-400">Real-time trading insights and market analysis</p>
               </div>
@@ -38,12 +38,27 @@ const Index = () => {
         {/* Stats Section */}
         <MinerviniStats />
         
-        {/* Main Feed */}
-        <MinerviniFeed />
+        {/* Twitter Feeds Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+          <div>
+            <TwitterFeed 
+              username="markminervini" 
+              displayName="Mark Minervini"
+              autoRefresh={true}
+            />
+          </div>
+          <div>
+            <TwitterFeed 
+              username="yashchitneni" 
+              displayName="Yash Chitneni"
+              autoRefresh={true}
+            />
+          </div>
+        </div>
 
         {/* Footer */}
         <div className="text-center text-slate-500 text-sm mt-12">
-          <p>Mark Minervini Live Feed - Real-time trading insights dashboard</p>
+          <p>Trading Insights Dashboard - Real-time market analysis from top traders</p>
         </div>
       </div>
     </div>
