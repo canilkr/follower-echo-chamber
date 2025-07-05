@@ -2,9 +2,7 @@
 import React from 'react';
 import { TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import MinerviniProfile from '@/components/MinerviniProfile';
-import MinerviniStats from '@/components/MinerviniStats';
-import TwitterFeed from '@/components/TwitterFeed';
+import CombinedFeed from '@/components/CombinedFeed';
 
 const Index = () => {
   return (
@@ -32,29 +30,8 @@ const Index = () => {
       </header>
 
       <div className="container mx-auto px-6 py-8">
-        {/* Profile Section */}
-        <MinerviniProfile />
-        
-        {/* Stats Section */}
-        <MinerviniStats />
-        
-        {/* Twitter Feeds Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-          <div>
-            <TwitterFeed 
-              username="markminervini" 
-              displayName="Mark Minervini"
-              autoRefresh={true}
-            />
-          </div>
-          <div>
-            <TwitterFeed 
-              username="yashchitneni" 
-              displayName="Yash Chitneni"
-              autoRefresh={true}
-            />
-          </div>
-        </div>
+        {/* Combined Twitter Feed */}
+        <CombinedFeed />
 
         {/* Footer */}
         <div className="text-center text-slate-500 text-sm mt-12">
