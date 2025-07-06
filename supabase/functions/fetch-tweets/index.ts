@@ -119,8 +119,8 @@ serve(async (req) => {
       );
     }
 
-    const { username } = await req.json();
-    console.log('Fetching tweets for username:', username);
+    const { usernames } = await req.json();
+    console.log('Fetching tweets for usernames:', usernames);
 
     // Check rate limit before making requests
     if (!checkRateLimit('twitter-api')) {
@@ -143,20 +143,22 @@ serve(async (req) => {
       'Content-Type': 'application/json',
     };
 
-    // First get user ID with retry logic
-    console.log('Fetching user ID...');
-    const userResponse = await fetchWithRetry(
-      `https://api.twitter.com/2/users/by/username/${username}`,
+    // Step 1: Get user IDs for all usernames in one request
+    console.log('Step 1: Fetching user IDs for all usernames...');
+    const usernamesParam = Array.isArray(usernames) ? usernames.join(',') : usernames;
+    
+    const usersResponse = await fetchWithRetry(
+      `https://api.twitter.com/2/users/by?usernames=${usernamesParam}&user.fields=name,username,profile_image_url`,
       { headers: requestHeaders }
     );
 
-    const userData = await userResponse.json();
+    const usersData = await usersResponse.json();
     
-    if (!userData.data?.id) {
-      console.error('User not found:', username);
+    if (!usersData.data || usersData.data.length === 0) {
+      console.error('No users found for usernames:', usernames);
       return new Response(
         JSON.stringify({ 
-          error: `User ${username} not found`,
+          error: `No users found for usernames: ${usernames}`,
           tweets: [] 
         }), 
         { 
@@ -166,52 +168,95 @@ serve(async (req) => {
       );
     }
 
-    const userId = userData.data.id;
-    console.log('Found user ID:', userId);
-
-    // Then get user's tweets with retry logic
-    console.log('Fetching tweets...');
-    const tweetsResponse = await fetchWithRetry(
-      `https://api.twitter.com/2/users/${userId}/tweets?max_results=20&tweet.fields=created_at,public_metrics,attachments&expansions=attachments.media_keys,author_id&media.fields=type,url,preview_image_url&user.fields=name,username,profile_image_url`,
-      { headers: requestHeaders }
-    );
-
-    const tweetsData = await tweetsResponse.json();
-    console.log(`Successfully fetched ${tweetsData.data?.length || 0} tweets for ${username}`);
-
-    const tweets = tweetsData.data || [];
-    const users = tweetsData.includes?.users || [];
-    const media = tweetsData.includes?.media || [];
+    console.log(`Found ${usersData.data.length} users`);
     
-    const author = users.find((user: any) => user.id === userId) || {
-      username: username,
-      name: username,
-      profile_image_url: `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face`
-    };
+    // Step 2: Fetch tweets for each user sequentially
+    const allTweets: any[] = [];
+    const results: Array<{ username: string; success: boolean; error?: string; tweetCount: number }> = [];
+    
+    for (const user of usersData.data) {
+      try {
+        console.log(`Fetching tweets for ${user.username} (ID: ${user.id})...`);
+        
+        // Add 500ms delay between requests to be gentle on the API
+        if (usersData.data.indexOf(user) > 0) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        const tweetsResponse = await fetchWithRetry(
+          `https://api.twitter.com/2/users/${user.id}/tweets?max_results=10&tweet.fields=created_at,public_metrics,attachments&expansions=attachments.media_keys&media.fields=type,url,preview_image_url`,
+          { headers: requestHeaders }
+        );
 
-    const formattedTweets = tweets.map((tweet: any) => {
-      const tweetMedia = tweet.attachments?.media_keys?.map((key: string) => {
-        const mediaItem = media.find((m: any) => m.media_key === key);
-        return mediaItem ? {
-          type: mediaItem.type,
-          url: mediaItem.url || mediaItem.preview_image_url
-        } : null;
-      }).filter(Boolean) || [];
+        const tweetsData = await tweetsResponse.json();
+        
+        if (tweetsData.data && tweetsData.data.length > 0) {
+          const media = tweetsData.includes?.media || [];
+          
+          // Enrich each tweet with user data and media
+          const enrichedTweets = tweetsData.data.map((tweet: any) => {
+            const tweetMedia = tweet.attachments?.media_keys?.map((key: string) => {
+              const mediaItem = media.find((m: any) => m.media_key === key);
+              return mediaItem ? {
+                type: mediaItem.type,
+                url: mediaItem.url || mediaItem.preview_image_url
+              } : null;
+            }).filter(Boolean) || [];
 
-      return {
-        id: tweet.id,
-        text: tweet.text,
-        created_at: tweet.created_at,
-        media: tweetMedia,
-        url: `https://twitter.com/${username}/status/${tweet.id}`,
-        author: author
-      };
+            return {
+              id: tweet.id,
+              text: tweet.text,
+              created_at: tweet.created_at,
+              media: tweetMedia,
+              url: `https://twitter.com/${user.username}/status/${tweet.id}`,
+              author: {
+                username: user.username,
+                name: user.name,
+                profile_image_url: user.profile_image_url || `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face`
+              }
+            };
+          });
+          
+          allTweets.push(...enrichedTweets);
+          console.log(`Successfully fetched ${enrichedTweets.length} tweets for ${user.username}`);
+          results.push({ username: user.username, success: true, tweetCount: enrichedTweets.length });
+        } else {
+          console.log(`No tweets found for ${user.username}`);
+          results.push({ username: user.username, success: true, tweetCount: 0 });
+        }
+        
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`Failed to fetch tweets for ${user.username}:`, errorMessage);
+        results.push({ 
+          username: user.username, 
+          success: false, 
+          error: errorMessage,
+          tweetCount: 0 
+        });
+      }
+    }
+
+    // Step 3: Sort all tweets by created_at in descending order
+    allTweets.sort((a, b) => {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
-    console.log(`Returning ${formattedTweets.length} formatted tweets`);
-
+    // Log summary
+    const successCount = results.filter(r => r.success).length;
+    const totalTweets = allTweets.length;
+    console.log(`Fetch summary: ${successCount}/${usersData.data.length} users successful, ${totalTweets} total tweets`);
+    
     return new Response(
-      JSON.stringify({ tweets: formattedTweets }),
+      JSON.stringify({ 
+        tweets: allTweets,
+        summary: {
+          totalUsers: usersData.data.length,
+          successfulUsers: successCount,
+          totalTweets: totalTweets,
+          results: results
+        }
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200

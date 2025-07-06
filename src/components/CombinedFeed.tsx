@@ -85,7 +85,7 @@ const CombinedFeed = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="text-white flex items-center gap-2">
               <Twitter className="w-6 h-6 text-blue-400" />
-              Combined Twitter Feed
+              X-Dashboard
             </CardTitle>
             <div className="flex items-center gap-3">
               <Button
