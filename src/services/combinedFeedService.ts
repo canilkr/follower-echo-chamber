@@ -23,21 +23,17 @@ export interface UserConfig {
   displayName: string;
 }
 
-// Configuration array for users - easily add new users here
+// Configuration array for users - currently simplified to single user for debugging
 export const TWITTER_USERS: UserConfig[] = [
-  { username: "markminervini", displayName: "Mark Minervini" },
   { username: "yashchitneni", displayName: "Yash Chitneni" }
 ];
 
 export const fetchCombinedTweets = async (): Promise<CombinedTweet[]> => {
   try {
-    console.log('Fetching combined tweets from all users...');
-    
-    // Extract usernames for the API call
-    const usernames = TWITTER_USERS.map(user => user.username);
+    console.log('Fetching tweets using search API...');
     
     const { data, error } = await supabase.functions.invoke('fetch-tweets', {
-      body: { usernames }
+      body: {} // Empty body since username is now hardcoded in the function
     });
 
     if (error) {
@@ -61,7 +57,7 @@ export const fetchCombinedTweets = async (): Promise<CombinedTweet[]> => {
       return [];
     }
 
-    // Add source information to each tweet based on username
+    // Add source information to each tweet
     const tweetsWithSource = data.tweets.map((tweet: any) => {
       const userConfig = TWITTER_USERS.find(user => user.username === tweet.author.username);
       return {
@@ -70,7 +66,7 @@ export const fetchCombinedTweets = async (): Promise<CombinedTweet[]> => {
       };
     });
 
-    console.log(`Successfully fetched ${tweetsWithSource.length} tweets from ${usernames.length} users`);
+    console.log(`Successfully fetched ${tweetsWithSource.length} tweets using search API`);
     
     // Log summary if available
     if (data.summary) {
@@ -80,7 +76,7 @@ export const fetchCombinedTweets = async (): Promise<CombinedTweet[]> => {
     return tweetsWithSource;
 
   } catch (error) {
-    console.error('Failed to fetch combined tweets:', error);
+    console.error('Failed to fetch tweets:', error);
     throw error;
   }
 };

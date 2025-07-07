@@ -6,29 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Rate limiting helper - simple in-memory store for this instance
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
-
-function checkRateLimit(key: string, limit: number = 900, windowMs: number = 15 * 60 * 1000): boolean {
-  const now = Date.now();
-  const current = rateLimitStore.get(key) || { count: 0, resetTime: now + windowMs };
-  
-  // Reset if window has passed
-  if (now > current.resetTime) {
-    current.count = 0;
-    current.resetTime = now + windowMs;
-  }
-  
-  if (current.count >= limit) {
-    console.log(`Rate limit reached for ${key}. Reset at: ${new Date(current.resetTime).toISOString()}`);
-    return false;
-  }
-  
-  current.count++;
-  rateLimitStore.set(key, current);
-  return true;
-}
-
 // Exponential backoff with jitter
 async function delay(attempt: number): Promise<void> {
   const baseDelay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s, 8s...
@@ -101,7 +78,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Fetch tweets function called');
+    console.log('Fetch tweets function called (using search endpoint)');
     
     const bearerToken = Deno.env.get('TWITTER_BEARER_TOKEN');
     
@@ -119,17 +96,36 @@ serve(async (req) => {
       );
     }
 
-    const { usernames } = await req.json();
-    console.log('Fetching tweets for usernames:', usernames);
+    const requestHeaders = {
+      'Authorization': `Bearer ${bearerToken}`,
+      'Content-Type': 'application/json',
+    };
 
-    // Check rate limit before making requests
-    if (!checkRateLimit('twitter-api')) {
-      console.log('Rate limit reached, returning empty result');
+    // Use the recent search endpoint instead of user timeline
+    const searchQuery = 'from:yashchitneni -is:retweet';
+    const searchParams = new URLSearchParams({
+      query: searchQuery,
+      'tweet.fields': 'created_at,public_metrics',
+      'expansions': 'author_id',
+      'user.fields': 'profile_image_url,name,username',
+      'max_results': '10'
+    });
+
+    const searchUrl = `https://api.twitter.com/2/tweets/search/recent?${searchParams.toString()}`;
+    
+    console.log(`Searching for tweets with query: ${searchQuery}`);
+    
+    const response = await fetchWithRetry(searchUrl, { headers: requestHeaders });
+    const data = await response.json();
+    
+    console.log('Search API response received:', JSON.stringify(data, null, 2));
+    
+    if (!data.data || data.data.length === 0) {
+      console.log('No tweets found in search results');
       return new Response(
         JSON.stringify({ 
-          error: 'Rate limit reached, please try again later',
           tweets: [],
-          rateLimited: true
+          message: 'No recent tweets found for the specified user'
         }), 
         { 
           status: 200,
@@ -138,27 +134,15 @@ serve(async (req) => {
       );
     }
 
-    const requestHeaders = {
-      'Authorization': `Bearer ${bearerToken}`,
-      'Content-Type': 'application/json',
-    };
-
-    // Step 1: Get user IDs for all usernames in one request
-    console.log('Step 1: Fetching user IDs for all usernames...');
-    const usernamesParam = Array.isArray(usernames) ? usernames.join(',') : usernames;
+    // Get user information from the includes section
+    const users = data.includes?.users || [];
+    const targetUser = users.find((user: any) => user.username === 'yashchitneni');
     
-    const usersResponse = await fetchWithRetry(
-      `https://api.twitter.com/2/users/by?usernames=${usernamesParam}&user.fields=name,username,profile_image_url`,
-      { headers: requestHeaders }
-    );
-
-    const usersData = await usersResponse.json();
-    
-    if (!usersData.data || usersData.data.length === 0) {
-      console.error('No users found for usernames:', usernames);
+    if (!targetUser) {
+      console.error('Target user not found in API response');
       return new Response(
         JSON.stringify({ 
-          error: `No users found for usernames: ${usernames}`,
+          error: 'User data not found in API response',
           tweets: [] 
         }), 
         { 
@@ -168,93 +152,33 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Found ${usersData.data.length} users`);
-    
-    // Step 2: Fetch tweets for each user sequentially
-    const allTweets: any[] = [];
-    const results: Array<{ username: string; success: boolean; error?: string; tweetCount: number }> = [];
-    
-    for (const user of usersData.data) {
-      try {
-        console.log(`Fetching tweets for ${user.username} (ID: ${user.id})...`);
-        
-        // Add 500ms delay between requests to be gentle on the API
-        if (usersData.data.indexOf(user) > 0) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-        
-        const tweetsResponse = await fetchWithRetry(
-          `https://api.twitter.com/2/users/${user.id}/tweets?max_results=10&tweet.fields=created_at,public_metrics,attachments&expansions=attachments.media_keys&media.fields=type,url,preview_image_url`,
-          { headers: requestHeaders }
-        );
-
-        const tweetsData = await tweetsResponse.json();
-        
-        if (tweetsData.data && tweetsData.data.length > 0) {
-          const media = tweetsData.includes?.media || [];
-          
-          // Enrich each tweet with user data and media
-          const enrichedTweets = tweetsData.data.map((tweet: any) => {
-            const tweetMedia = tweet.attachments?.media_keys?.map((key: string) => {
-              const mediaItem = media.find((m: any) => m.media_key === key);
-              return mediaItem ? {
-                type: mediaItem.type,
-                url: mediaItem.url || mediaItem.preview_image_url
-              } : null;
-            }).filter(Boolean) || [];
-
-            return {
-              id: tweet.id,
-              text: tweet.text,
-              created_at: tweet.created_at,
-              media: tweetMedia,
-              url: `https://twitter.com/${user.username}/status/${tweet.id}`,
-              author: {
-                username: user.username,
-                name: user.name,
-                profile_image_url: user.profile_image_url || `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face`
-              }
-            };
-          });
-          
-          allTweets.push(...enrichedTweets);
-          console.log(`Successfully fetched ${enrichedTweets.length} tweets for ${user.username}`);
-          results.push({ username: user.username, success: true, tweetCount: enrichedTweets.length });
-        } else {
-          console.log(`No tweets found for ${user.username}`);
-          results.push({ username: user.username, success: true, tweetCount: 0 });
-        }
-        
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`Failed to fetch tweets for ${user.username}:`, errorMessage);
-        results.push({ 
-          username: user.username, 
-          success: false, 
-          error: errorMessage,
-          tweetCount: 0 
-        });
+    // Enrich tweets with user data
+    const enrichedTweets = data.data.map((tweet: any) => ({
+      id: tweet.id,
+      text: tweet.text,
+      created_at: tweet.created_at,
+      url: `https://twitter.com/${targetUser.username}/status/${tweet.id}`,
+      author: {
+        username: targetUser.username,
+        name: targetUser.name,
+        profile_image_url: targetUser.profile_image_url || `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face`
       }
-    }
+    }));
 
-    // Step 3: Sort all tweets by created_at in descending order
-    allTweets.sort((a, b) => {
+    // Sort by created_at in descending order
+    enrichedTweets.sort((a, b) => {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
-    // Log summary
-    const successCount = results.filter(r => r.success).length;
-    const totalTweets = allTweets.length;
-    console.log(`Fetch summary: ${successCount}/${usersData.data.length} users successful, ${totalTweets} total tweets`);
+    console.log(`Successfully fetched ${enrichedTweets.length} tweets using search API`);
     
     return new Response(
       JSON.stringify({ 
-        tweets: allTweets,
+        tweets: enrichedTweets,
         summary: {
-          totalUsers: usersData.data.length,
-          successfulUsers: successCount,
-          totalTweets: totalTweets,
-          results: results
+          totalTweets: enrichedTweets.length,
+          searchQuery: searchQuery,
+          endpoint: 'search/recent'
         }
       }),
       { 
